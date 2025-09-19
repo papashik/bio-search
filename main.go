@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"slices"
+	"strings"
 )
 
 const (
@@ -50,14 +51,16 @@ func main() {
 
 	slices.SortFunc(sequences, func(a, b Seq) int {
 		return cmp.Compare(
-			cmp.Compare(a.Result1, b.Result1)*Coef1,
-			cmp.Compare(a.Result2, b.Result2)*Coef2,
+			a.Result1*Coef1+a.Result2*Coef2,
+			b.Result1*Coef1+b.Result2*Coef2,
 		)
 	})
 
 	for i := 0; i < TopCount; i++ {
-		fmt.Printf(">%s\n", sequences[i].Name)
-		fmt.Println(sequences[i].Sequence)
+		a := sequences[i]
+		fmt.Printf(">%f %f %f %s\n", a.Result1, a.Result2, a.Result1*Coef1+a.Result2*Coef2, a.Name)
+		//fmt.Printf(">%s\n", a.Name)
+		fmt.Println(a.Sequence)
 	}
 }
 
@@ -90,8 +93,11 @@ func parseFastaFile(filePath string) ([]Seq, error) {
 		switch {
 		case b == '>':
 			if currentSeq != nil {
-				currentSeq.Sequence = string(currentSequence)
-				sequences = append(sequences, *currentSeq)
+
+				currentSeq.Sequence = strings.TrimSpace(string(currentSequence))
+				if len(currentSeq.Sequence) > 0 {
+					sequences = append(sequences, *currentSeq)
+				}
 			}
 
 			currentSeq = &Seq{
@@ -122,11 +128,6 @@ func parseFastaFile(filePath string) ([]Seq, error) {
 				position++
 			}
 		}
-	}
-
-	if currentSeq != nil {
-		currentSeq.Sequence = string(currentSequence)
-		sequences = append(sequences, *currentSeq)
 	}
 
 	return sequences, nil
@@ -162,7 +163,12 @@ func processPositions(seqInput Seq, sequences []Seq) {
 			letterPosInput := positionsInput[letter]
 			if len(letterPosInput) > 0 {
 				if len(letterPosInput) != len(letterPos) {
-					pos1, pos2 := makeEqualLen(letterPosInput, letterPos)
+					var pos1, pos2 []int
+					if len(letterPosInput) > len(letterPos) {
+						pos1, pos2 = makeEqualLen(letterPos, letterPosInput)
+					} else {
+						pos1, pos2 = makeEqualLen(letterPosInput, letterPos)
+					}
 					var sumD float64
 					for i := 0; i < len(pos1); i++ {
 						d := (pos1[i] - pos2[i])
@@ -174,13 +180,16 @@ func processPositions(seqInput Seq, sequences []Seq) {
 		}
 	}
 }
-
 func makeEqualLen(shorter, longer []int) ([]int, []int) {
 	resultShort := make([]int, len(shorter))
 	copy(resultShort, shorter)
 	resultLong := make([]int, len(longer))
 	copy(resultLong, longer)
-
+	if len(resultShort) == 1 {
+		for i := 1; i < len(longer); i++ {
+			resultShort = append(resultShort, resultShort[0])
+		}
+	}
 	for len(resultShort) < len(resultLong) {
 		maxDiff := 0
 		insertIndex := 0
