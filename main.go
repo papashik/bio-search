@@ -16,6 +16,7 @@ const (
 
 	Coef1 = 1
 	Coef2 = 1
+	Coef3 = 7
 )
 
 type Seq struct {
@@ -24,7 +25,11 @@ type Seq struct {
 	Positions map[byte][]int
 	Letters   [26]int
 	Result1   float64
+	Coef1     float64
 	Result2   float64
+	Coef2     float64
+	Result3   float64
+	Coef3     float64
 }
 
 func main() {
@@ -47,21 +52,24 @@ func main() {
 	}
 
 	processPositions(seq, sequences)
-	countCosinuses(seq, sequences)
+	countSimple(seq, sequences)
 
 	slices.SortFunc(sequences, func(a, b Seq) int {
-		return cmp.Compare(
-			a.Result1*Coef1+a.Result2*Coef2,
-			b.Result1*Coef1+b.Result2*Coef2,
+		return -cmp.Compare(
+			(a.Result1*a.Coef1+a.Result2*a.Coef2+a.Result3*a.Coef3)/(a.Coef1+a.Coef2+a.Coef3),
+			(b.Result1*b.Coef1+b.Result2*b.Coef2+b.Result3*b.Coef3)/(b.Coef1+b.Coef2+b.Coef3),
 		)
 	})
 
 	for i := 0; i < TopCount; i++ {
 		a := sequences[i]
-		fmt.Printf(">%f %f %f %s\n", a.Result1, a.Result2, a.Result1*Coef1+a.Result2*Coef2, a.Name)
-		//fmt.Printf(">%s\n", a.Name)
+		fmt.Printf(">%f %f %f %f %s\n",
+			a.Result1*a.Coef1, a.Result2*a.Coef2, a.Result3*a.Coef3,
+			(a.Result1*a.Coef1+a.Result2*a.Coef2+a.Result3*a.Coef3)/(a.Coef1+a.Coef2+a.Coef3),
+			a.Name)
 		fmt.Println(a.Sequence)
 	}
+
 }
 
 func parseFastaFile(filePath string) ([]Seq, error) {
@@ -133,17 +141,28 @@ func parseFastaFile(filePath string) ([]Seq, error) {
 	return sequences, nil
 }
 
-func countCosinuses(seq Seq, sequences []Seq) {
+func countSimple(seq Seq, sequences []Seq) {
 	for i := range sequences {
-		sequences[i].Result2 = cos(seq.Letters, sequences[i].Letters)
+		sequences[i].Result2 = cos(seq.Letters[:], sequences[i].Letters[:])
+		sequences[i].Result3 = err(seq.Letters[:], sequences[i].Letters[:])
+		sequences[i].Coef2 = Coef2
+		sequences[i].Coef3 = Coef3
 	}
 }
 
-func cos(v1, v2 [26]int) float64 {
-	dot := 0
-	mag1, mag2 := 0.0, 0.0
+func err(v1, v2 []int) float64 {
+	var err int
+	for i := range v1 {
+		err += (v1[i] - v2[i]) * (v1[i] - v2[i])
+	}
+	return 1 / math.Log(float64(err))
+}
 
-	for i := 0; i < 26; i++ {
+func cos(v1, v2 []int) float64 {
+	var dot int
+	var mag1, mag2 = 0.0, 0.0
+
+	for i := 0; i < len(v1); i++ {
 		dot += v1[i] * v2[i]
 		mag1 += float64(v1[i] * v1[i])
 		mag2 += float64(v2[i] * v2[i])
@@ -159,6 +178,9 @@ func processPositions(seqInput Seq, sequences []Seq) {
 	for i := range sequences {
 		positions := sequences[i].Positions
 		positionsInput := seqInput.Positions
+		if 0.7*float64(max(len(seqInput.Sequence), len(sequences[i].Sequence))) > float64(min(len(seqInput.Sequence), len(sequences[i].Sequence))) {
+			sequences[i].Coef1 = 0
+		}
 		for letter, letterPos := range positions {
 			letterPosInput := positionsInput[letter]
 			if len(letterPosInput) > 0 {
@@ -169,15 +191,12 @@ func processPositions(seqInput Seq, sequences []Seq) {
 					} else {
 						pos1, pos2 = makeEqualLen(letterPosInput, letterPos)
 					}
-					var sumD float64
-					for i := 0; i < len(pos1); i++ {
-						d := (pos1[i] - pos2[i])
-						sumD += float64(d * d)
-					}
-					sequences[i].Result1 = sumD / float64(len(pos1))
+					sequences[i].Result1 += cos(pos1, pos2)
 				}
 			}
 		}
+		sequences[i].Result1 /= 26
+		sequences[i].Coef1 = Coef1
 	}
 }
 func makeEqualLen(shorter, longer []int) ([]int, []int) {
