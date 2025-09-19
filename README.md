@@ -1,4 +1,4 @@
-# bio-search
+# bio-search -- ИУ9-71Б Павел Якубов, Софья Прокашкина
 Algorithm for ranking different proteins by similarity with given one
 
 Путь к файлу поместить на строчку 35 файла `main.go`.
