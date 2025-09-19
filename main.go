@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"cmp"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"slices"
@@ -63,10 +62,7 @@ func main() {
 
 	for i := 0; i < TopCount; i++ {
 		a := sequences[i]
-		fmt.Printf(">%f %f %f %f %s\n",
-			a.Result1*a.Coef1, a.Result2*a.Coef2, a.Result3*a.Coef3,
-			(a.Result1*a.Coef1+a.Result2*a.Coef2+a.Result3*a.Coef3)/(a.Coef1+a.Coef2+a.Coef3),
-			a.Name)
+		fmt.Printf(">%s\n", a.Name)
 		fmt.Println(a.Sequence)
 	}
 
@@ -94,7 +90,7 @@ func parseFastaFile(filePath string) ([]Seq, error) {
 				currentSeq.Sequence = string(currentSequence)
 				sequences = append(sequences, *currentSeq)
 			}
-			log.Println(err)
+			fmt.Println(err)
 			break
 		}
 
